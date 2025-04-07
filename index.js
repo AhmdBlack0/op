@@ -12,14 +12,32 @@ app.use(cors());
 app.use(express.json());
 
 // MongoDB Connection
+// MongoDB Connection
 mongoose
   .connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
     connectTimeoutMS: 30000, // 30 seconds
     socketTimeoutMS: 45000, // 45 seconds
     serverSelectionTimeoutMS: 30000, // 30 seconds
   })
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.log("MongoDB connection error:", err));
+  .then(() => console.log("MongoDB connected successfully"))
+  .catch((err) => {
+    console.error("MongoDB connection error details:", err);
+    // Keep trying to reconnect
+    mongoose.connection.on("disconnected", () => {
+      console.log("MongoDB disconnected. Attempting to reconnect...");
+    });
+  });
+
+// Add connection monitoring
+mongoose.connection.on("connected", () => {
+  console.log("MongoDB connected event fired");
+});
+
+mongoose.connection.on("error", (err) => {
+  console.error("MongoDB connection error event:", err);
+});
 // Create a simple model
 const Item = mongoose.model(
   "Item",
@@ -48,6 +66,29 @@ app.get("/api/items", async (req, res) => {
 
     const items = await Item.find();
     res.json(items);
+  } catch (err) {
+    console.error("Detailed error:", err);
+    res.status(500).json({
+      message: err.message,
+      code: err.code,
+      name: err.name,
+    });
+  }
+});
+
+app.post("/api/items", async (req, res) => {
+  try {
+    // Check connection status before attempting query
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(500).json({
+        message: "Database not connected",
+        readyState: mongoose.connection.readyState,
+      });
+    }
+
+    const newItem = new Item(req.body);
+    const savedItem = await newItem.save();
+    res.status(201).json(savedItem);
   } catch (err) {
     console.error("Detailed error:", err);
     res.status(500).json({
