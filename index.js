@@ -1,13 +1,10 @@
-// Initialize project and install dependencies
-// npm init -y
-// npm install express mongoose cors dotenv
-
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
 
 const app = express();
+// Use PORT from environment variables (Railway sets this)
 const PORT = process.env.PORT || 3000;
 
 // Middleware
@@ -30,6 +27,11 @@ const Item = mongoose.model(
   })
 );
 
+// Test route to verify server is running
+app.get("/", (req, res) => {
+  res.send("API is running");
+});
+
 // API Routes
 app.get("/api/items", async (req, res) => {
   try {
@@ -48,6 +50,10 @@ app.post("/api/items", async (req, res) => {
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
+});
+
+app.get("/test", (req, res) => {
+  res.json({ message: "Test route is working" });
 });
 
 // Start server
