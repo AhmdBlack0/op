@@ -14,13 +14,16 @@ app.use(express.json());
 // MongoDB Connection
 // MongoDB Connection
 mongoose
-  .connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    connectTimeoutMS: 30000, // 30 seconds
-    socketTimeoutMS: 45000, // 45 seconds
-    serverSelectionTimeoutMS: 30000, // 30 seconds
-  })
+  .connect(
+    `mongodb+srv://ahmdblack0:ASI7ilscb4TUR3VI@cluster0.s6yzhqd.mongodb.net/tst?retryWrites=true&w=majority&appName=Cluster0`,
+    {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      connectTimeoutMS: 30000, // 30 seconds
+      socketTimeoutMS: 45000, // 45 seconds
+      serverSelectionTimeoutMS: 30000, // 30 seconds
+    }
+  )
   .then(() => console.log("MongoDB connected successfully"))
   .catch((err) => {
     console.error("MongoDB connection error details:", err);
