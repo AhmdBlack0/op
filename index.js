@@ -13,10 +13,13 @@ app.use(express.json());
 
 // MongoDB Connection
 mongoose
-  .connect(process.env.MONGODB_URI)
+  .connect(process.env.MONGODB_URI, {
+    connectTimeoutMS: 30000, // 30 seconds
+    socketTimeoutMS: 45000, // 45 seconds
+    serverSelectionTimeoutMS: 30000, // 30 seconds
+  })
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.log("MongoDB connection error:", err));
-
 // Create a simple model
 const Item = mongoose.model(
   "Item",
@@ -35,25 +38,109 @@ app.get("/", (req, res) => {
 // API Routes
 app.get("/api/items", async (req, res) => {
   try {
-    const items = await Item.find();
-    res.json(items);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+    // Check connection status before attempting query
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(500).json({
+        message: "Database not connected",
+        readyState: mongoose.connection.readyState,
+      });
+    }
 
-app.get("/api/items", async (req, res) => {
-  try {
     const items = await Item.find();
     res.json(items);
   } catch (err) {
-    console.error("Error in /api/items route:", err);
-    res.status(500).json({ message: err.message });
+    console.error("Detailed error:", err);
+    res.status(500).json({
+      message: err.message,
+      code: err.code,
+      name: err.name,
+    });
   }
 });
 
 app.get("/test", (req, res) => {
   res.json({ message: "Test route is working" });
+});
+
+app.get("/test2", (req, res) => {
+  res.json({ message: "Test route is working" });
+});
+
+app.get("/test-db", async (req, res) => {
+  try {
+    const connectionState = mongoose.connection.readyState;
+    let status;
+
+    switch (connectionState) {
+      case 0:
+        status = "disconnected";
+        break;
+      case 1:
+        status = "connected";
+        break;
+      case 2:
+        status = "connecting";
+        break;
+      case 3:
+        status = "disconnecting";
+        break;
+      default:
+        status = "unknown";
+    }
+
+    // Get environment variable (hide credentials)
+    const mongoUriRedacted = process.env.MONGODB_URI
+      ? process.env.MONGODB_URI.replace(/:\/\/([^:]+):([^@]+)@/, "://***:***@")
+      : "Not set";
+
+    res.json({
+      mongoDbStatus: status,
+      connectionState: connectionState,
+      mongoUriPresent: !!process.env.MONGODB_URI,
+      mongoUriRedacted: mongoUriRedacted,
+      host: mongoose.connection.host || "Not connected",
+      database: mongoose.connection.name || "Not connected",
+      error: mongoose.connection.error
+        ? mongoose.connection.error.message
+        : "No error",
+    });
+  } catch (err) {
+    console.error("Database test error:", err);
+    res.status(500).json({
+      error: err.message,
+      stack: err.stack,
+    });
+  }
+});
+
+// Add a test route that tries to create an item
+app.get("/create-test-item", async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(500).json({
+        message: "Database not connected",
+        readyState: mongoose.connection.readyState,
+      });
+    }
+
+    const testItem = new Item({
+      name: "Test Item " + Date.now(),
+      description: "Created as a test at " + new Date().toISOString(),
+    });
+
+    const result = await testItem.save();
+    res.json({
+      message: "Test item created successfully",
+      item: result,
+    });
+  } catch (err) {
+    console.error("Create test item error:", err);
+    res.status(500).json({
+      message: err.message,
+      code: err.code,
+      name: err.name,
+    });
+  }
 });
 
 // Start server
