@@ -42,13 +42,13 @@ app.get("/api/items", async (req, res) => {
   }
 });
 
-app.post("/api/items", async (req, res) => {
-  const newItem = new Item(req.body);
+app.get("/api/items", async (req, res) => {
   try {
-    const savedItem = await newItem.save();
-    res.status(201).json(savedItem);
+    const items = await Item.find();
+    res.json(items);
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    console.error("Error in /api/items route:", err);
+    res.status(500).json({ message: err.message });
   }
 });
 
